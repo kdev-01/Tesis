@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+  --sport-gradient: linear-gradient(135deg, rgba(244, 63, 94, 0.9), rgba(14, 165, 233, 0.9));
+  --radius-lg: 1.5rem;
+  --radius-md: 1rem;
+  --radius-sm: 0.75rem;
+}
+
+body {
+  @apply bg-surface-light text-foreground font-body antialiased transition-colors duration-500 ease-in-out;
+}
+
+body.dark {
+  @apply bg-surface text-foreground-dark;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, theme('colors.primary.500'), theme('colors.accent'));
+  border-radius: var(--radius-sm);
+}
+
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-primary-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg;
+}
+
+.section-title {
+  @apply text-3xl sm:text-4xl font-display tracking-wide text-primary-600 mb-6 flex items-center gap-3;
+}
+
+.card-pattern {
+  background-image: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    linear-gradient(45deg, rgba(244, 63, 94, 0.1), rgba(14, 165, 233, 0.1));
+}
