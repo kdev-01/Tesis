@@ -69,3 +69,4 @@ Thumbs.db
 # =========================
 *.pid
 *.pid.lock
+docker-compose.yml

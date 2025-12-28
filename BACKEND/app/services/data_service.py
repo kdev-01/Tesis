@@ -14,9 +14,8 @@ from app.core import security
 from app.core.config import settings
 from app.core.exceptions import ApplicationError, ForbiddenError
 from app.models.event import Evento, EventoInstitucion, EventoPartido
-from app.models.registration import EventoInscripcion
+from app.models.event import EventoInscripcion
 from app.models.institution import Institucion
-from app.models.student import Estudiante
 from app.repositories import (
     config_repository,
     category_repository,

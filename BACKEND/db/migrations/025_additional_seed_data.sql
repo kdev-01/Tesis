@@ -4,8 +4,8 @@
 -- Nuevas instituciones
 INSERT INTO instituciones (nombre, descripcion, direccion, ciudad, email, telefono, estado)
 VALUES
-  ('Colegio Sierra Nevada', 'Institución con programas deportivos destacados', 'Av. Principal 123', 'Medellín', 'contacto@sierranevada.edu', '+57 3001111111', 'activo'),
-  ('Unidad Educativa Horizonte', 'Participa activamente en torneos intercolegiales', 'Calle 45 #10', 'Quito', 'info@horizonte.edu.ec', '+593 980000001', 'activo')
+  ('Colegio Sierra Nevada', 'Institución con programas deportivos destacados', 'Av. Principal 123', 'Medellín', 'contacto@sierranevada.edu', '+57 3001111111', 'activa'),
+  ('Unidad Educativa Horizonte', 'Participa activamente en torneos intercolegiales', 'Calle 45 #10', 'Quito', 'info@horizonte.edu.ec', '+593 980000001', 'activa')
 ON CONFLICT (nombre) DO NOTHING;
 
 -- Representantes educativos y asignación a instituciones
@@ -45,7 +45,7 @@ ON CONFLICT (institucion_id, usuario_id) DO NOTHING;
 
 -- Estudiantes adicionales
 INSERT INTO estudiantes (institucion_id, nombres, apellidos, documento_identidad, fecha_nacimiento, genero, activo, creado_en, actualizado_en)
-SELECT inst.id, datos.nombres, datos.apellidos, datos.documento_identidad, datos.fecha_nacimiento, datos.genero, TRUE, now(), now()
+SELECT inst.id, datos.nombres, datos.apellidos, datos.documento_identidad, datos.fecha_nacimiento::date, datos.genero, TRUE, now(), now()
 FROM (
   VALUES
     ('Colegio Sierra Nevada', 'Camila', 'Rodríguez', '11001100', '2007-03-14', 'F'),
@@ -58,10 +58,15 @@ ON CONFLICT (institucion_id, documento_identidad) DO NOTHING;
 
 -- Escenarios adicionales
 INSERT INTO localizaciones (nombre, direccion, ciudad, capacidad, activo)
-VALUES
-  ('Polideportivo Central', 'Transversal 12 #34-56', 'Bogotá', 5000, TRUE),
-  ('Coliseo del Norte', 'Av. de la Prensa y Calle 100', 'Quito', 3200, TRUE)
-ON CONFLICT (nombre) DO NOTHING;
+SELECT d.*
+FROM (
+  VALUES
+    ('Polideportivo Central', 'Transversal 12 #34-56', 'Bogotá', 5000, TRUE),
+    ('Coliseo del Norte', 'Av. de la Prensa y Calle 100', 'Quito', 3200, TRUE)
+) AS d(nombre, direccion, ciudad, capacidad, activo)
+WHERE NOT EXISTS (
+  SELECT 1 FROM localizaciones WHERE nombre = d.nombre
+);
 
 -- Eventos de ejemplo con cronograma completo
 WITH admin_user AS (
@@ -105,12 +110,12 @@ SELECT
   'borrador',
   event_data.sexo_evento,
   event_data.deporte_id,
-  event_data.fecha_inscripcion_inicio,
-  event_data.fecha_inscripcion_fin,
-  event_data.fecha_auditoria_inicio,
-  event_data.fecha_auditoria_fin,
-  event_data.fecha_campeonato_inicio,
-  event_data.fecha_campeonato_fin,
+  event_data.fecha_inscripcion_inicio::date,
+  event_data.fecha_inscripcion_fin::date,
+  event_data.fecha_auditoria_inicio::date,
+  event_data.fecha_auditoria_fin::date,
+  event_data.fecha_campeonato_inicio::date,
+  event_data.fecha_campeonato_fin::date,
   extract(year FROM now())::TEXT,
   NULL,
   FALSE,
