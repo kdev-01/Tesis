@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_fdpen
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: fdpen
+      POSTGRES_PASSWORD: fdpen123
+      POSTGRES_DB: fdpen_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    container_name: backend_fdpen
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    volumes:
+      - ./media:/app/media
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

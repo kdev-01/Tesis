@@ -21,6 +21,10 @@ logger = get_logger(__name__)
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 
+@app.get("/")
+def root():
+    return {"message": "Hola Mundo :)"}
+
 media_directory = Path(settings.media_root).expanduser().resolve()
 media_directory.mkdir(parents=True, exist_ok=True)
 app.mount(settings.media_url_path, StaticFiles(directory=media_directory), name="media")
