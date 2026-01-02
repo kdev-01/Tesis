@@ -1,0 +1,3 @@
+api.fedenapo.site {
+    reverse_proxy backend:8000
+}
