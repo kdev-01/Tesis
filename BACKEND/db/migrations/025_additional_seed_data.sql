@@ -8,29 +8,6 @@ VALUES
   ('Unidad Educativa Horizonte', 'Participa activamente en torneos intercolegiales', 'Calle 45 #10', 'Quito', 'info@horizonte.edu.ec', '+593 980000001', 'activa')
 ON CONFLICT (nombre) DO NOTHING;
 
--- Representantes educativos y asignación a instituciones
-WITH rep_role AS (
-  SELECT id FROM roles_sistema WHERE nombre = 'Representante educativo' LIMIT 1
-),
-rep1 AS (
-  INSERT INTO usuarios (nombre_completo, email, telefono, activo, hash_password, creado_en, actualizado_en)
-  VALUES ('Laura Gómez', 'laura.gomez@sierranevada.edu', '+57 3002222222', TRUE,
-    '$argon2id$v=19$m=19456,t=2,p=2$fo9xznlPiXGOEYLwHoNQig$0iPAuDGYb2HZGjaRiaQa3AHryrTcSTrSBJ2UDAoaqFM', now(), now())
-  ON CONFLICT (email) DO UPDATE SET telefono = EXCLUDED.telefono
-  RETURNING id
-),
-rep2 AS (
-  INSERT INTO usuarios (nombre_completo, email, telefono, activo, hash_password, creado_en, actualizado_en)
-  VALUES ('Pedro Almeida', 'pedro.almeida@horizonte.edu.ec', '+593 980000002', TRUE,
-    '$argon2id$v=19$m=19456,t=2,p=2$fo9xznlPiXGOEYLwHoNQig$0iPAuDGYb2HZGjaRiaQa3AHryrTcSTrSBJ2UDAoaqFM', now(), now())
-  ON CONFLICT (email) DO UPDATE SET telefono = EXCLUDED.telefono
-  RETURNING id
-)
-INSERT INTO usuarios_roles (usuario_id, rol_id)
-SELECT rep.id, rep_role.id
-FROM rep_role, (SELECT * FROM rep1 UNION ALL SELECT * FROM rep2) rep
-ON CONFLICT (usuario_id, rol_id) DO NOTHING;
-
 -- Vincular representantes a sus instituciones
 INSERT INTO instituciones_miembros (institucion_id, usuario_id, rol_institucion)
 SELECT inst.id, usr.id, 'encargado'
@@ -42,19 +19,6 @@ JOIN usuarios AS usr ON (
   (inst.nombre = 'Unidad Educativa Horizonte' AND usr.email = 'pedro.almeida@horizonte.edu.ec')
 )
 ON CONFLICT (institucion_id, usuario_id) DO NOTHING;
-
--- Estudiantes adicionales
-INSERT INTO estudiantes (institucion_id, nombres, apellidos, documento_identidad, fecha_nacimiento, genero, activo, creado_en, actualizado_en)
-SELECT inst.id, datos.nombres, datos.apellidos, datos.documento_identidad, datos.fecha_nacimiento::date, datos.genero, TRUE, now(), now()
-FROM (
-  VALUES
-    ('Colegio Sierra Nevada', 'Camila', 'Rodríguez', '11001100', '2007-03-14', 'F'),
-    ('Colegio Sierra Nevada', 'Mateo', 'Vargas', '11002200', '2006-11-02', 'M'),
-    ('Unidad Educativa Horizonte', 'Dayana', 'Mora', '22003300', '2008-07-21', 'F'),
-    ('Unidad Educativa Horizonte', 'Javier', 'Quishpe', '22004400', '2007-01-09', 'M')
-) AS datos(nombre_institucion, nombres, apellidos, documento_identidad, fecha_nacimiento, genero)
-JOIN instituciones AS inst ON inst.nombre = datos.nombre_institucion
-ON CONFLICT (institucion_id, documento_identidad) DO NOTHING;
 
 -- Escenarios adicionales
 INSERT INTO localizaciones (nombre, direccion, ciudad, capacidad, activo)

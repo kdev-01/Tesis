@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS evento_instituciones (
     id BIGSERIAL PRIMARY KEY,
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     institucion_id BIGINT NOT NULL REFERENCES instituciones(id) ON DELETE CASCADE,
+    fecha_inscripcion_extendida DATE,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (evento_id, institucion_id)
 );
