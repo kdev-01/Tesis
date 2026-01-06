@@ -69,3 +69,9 @@ Thumbs.db
 # =========================
 *.pid
 *.pid.lock
+
+# =========================
+# Media
+# =========================
+BACKEND/media/*
+!BACKEND/media/.gitkeep

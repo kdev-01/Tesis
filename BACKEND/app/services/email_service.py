@@ -19,8 +19,6 @@ class EmailService:
         self.password = settings.smtp_password
         self.use_tls = settings.smtp_use_tls
         self.sender = settings.smtp_from
-        print("SMTP CONFIG:", self.host, self.port, self.use_tls, self.username)
-
 
     async def send_email(self, *, to: str, subject: str, body: str) -> None:
         message = EmailMessage()
@@ -49,7 +47,6 @@ class EmailService:
             if self.use_tls:
                 # Caso típico: Gmail 587 + STARTTLS
                 with smtplib.SMTP(self.host, self.port, timeout=20) as smtp:
-                    smtp.set_debuglevel(1)  # DEBUG SMTP en consola (útil mientras depuras)
                     smtp.ehlo()
                     smtp.starttls()
                     smtp.ehlo()
@@ -59,7 +56,6 @@ class EmailService:
             else:
                 # Si usas puerto 465: SSL implícito
                 with smtplib.SMTP_SSL(self.host, self.port, timeout=20) as smtp:
-                    smtp.set_debuglevel(1)  # DEBUG SMTP
                     if self.username:
                         smtp.login(self.username, self.password or "")
                     smtp.send_message(message)

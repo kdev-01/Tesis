@@ -150,7 +150,7 @@ export const Institutions = () => {
   const [isRepresentativeManagerOpen, setRepresentativeManagerOpen] = useState(false);
   const [representativesLoading, setRepresentativesLoading] = useState(false);
   const [representatives, setRepresentatives] = useState([]);
-  const [availableRepresentatives,  setAvailableRepresentatives] = useState([]);
+  const [availableRepresentatives, setAvailableRepresentatives] = useState([]);
   const [availableRepresentativesLoading, setAvailableRepresentativesLoading] = useState(false);
   const [selectedExistingRepresentative, setSelectedExistingRepresentative] = useState(null);
   const [assigningExistingRepresentative, setAssigningExistingRepresentative] = useState(false);
@@ -1117,7 +1117,6 @@ export const Institutions = () => {
     'inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-amber-500 shadow-lg shadow-amber-400/20 transition hover:-translate-y-0.5 hover:bg-amber-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 dark:bg-slate-800 dark:text-amber-300';
 
   const renderStatusBadge = (input) => {
-    console.log(input)
     if (input && typeof input === 'object') {
       if (input.eliminado) {
         return (
@@ -1154,183 +1153,181 @@ export const Institutions = () => {
     );
   };
 
-  console.log(filteredInstitutions)
-
   return (
 
     <>
-    <Card>
-      <CardHeader
-        title="Instituciones"
-        description="Controla los colegios y academias asociadas."
-        actions={
-          <div className="flex flex-wrap items-center gap-2 rounded-full bg-gradient-to-r from-sky-100 via-rose-100 to-purple-100 p-1.5 shadow-inner dark:from-slate-800 dark:via-slate-800/70 dark:to-slate-900">
-            <Button variant="gradient" size="sm" onClick={openCreateModal}>
-              <PlusIcon className="h-4 w-4" aria-hidden />
-              Nueva institución
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-sky-500 hover:bg-sky-100/60"
-              onClick={() => refetch()}
-              disabled={loading}
-            >
-              <ArrowPathIcon className="h-4 w-4" aria-hidden />
-              Refrescar
-            </Button>
-          </div>
-        }
-      />
-      <div className="mb-6">
-        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre o ciudad" />
-      </div>
-      <DataTable
-        columns={[
-          {
-            Header: 'Portada',
-            accessor: 'portada_url',
-            Cell: ({ value, row }) => (
-              <div className="flex items-center gap-3">
-                {value ? (
-                  <img
-                    src={resolveMediaUrl(value)}
-                    alt={row.nombre}
-                    className="h-12 w-16 rounded-2xl object-cover shadow-md"
-                  />
-                ) : (
-                  <div className="flex h-12 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-sky-200 to-rose-200 text-sm font-semibold text-slate-700 dark:from-slate-700 dark:to-slate-800 dark:text-slate-200">
-                    {(row.nombre ?? '?').slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-              </div>
-            ),
-          },
-          { Header: 'Nombre', accessor: 'nombre' },
-          { Header: 'Ciudad', accessor: 'ciudad', Cell: ({ value }) => value || '—' },
-          { Header: 'Correo', accessor: 'email', Cell: ({ value }) => value || '—' },
-          { Header: 'Teléfono', accessor: 'telefono', Cell: ({ value }) => value || '—' },
-          {
-            Header: 'Estado',
-            accessor: 'estado',
-            Cell: ({ value }) => renderStatusBadge(value),
-          },
-        ]}
-        data={filteredInstitutions}
-        emptyMessage={'Aún no hay instituciones registradas'}
-        loading={loading}
-        renderActions={(institution) => {
-          const isDeleted = Boolean(institution.eliminado);
-          return (
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className={`${actionButtonClass} text-sky-500`}
-                onClick={() => openDetailModal(institution)}
-                title="Ver detalle"
+      <Card>
+        <CardHeader
+          title="Instituciones"
+          description="Controla los colegios y academias asociadas."
+          actions={
+            <div className="flex flex-wrap items-center gap-2 rounded-full bg-gradient-to-r from-sky-100 via-rose-100 to-purple-100 p-1.5 shadow-inner dark:from-slate-800 dark:via-slate-800/70 dark:to-slate-900">
+              <Button variant="gradient" size="sm" onClick={openCreateModal}>
+                <PlusIcon className="h-4 w-4" aria-hidden />
+                Nueva institución
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-sky-500 hover:bg-sky-100/60"
+                onClick={() => refetch()}
+                disabled={loading}
               >
-                <EyeIcon className="h-5 w-5" aria-hidden />
-              </button>
-              {!isDeleted ? (
-                <>
-                  <button
-                    type="button"
-                    className={` ${actionButtonClass} text-green-500 `}
-                    onClick={() => openEditModal(institution)}
-                    title="Editar"
-                  >
-                    <PencilSquareIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={` ${actionButtonClass} text-orange-500 `}
-                    onClick={() => openStudentManager(institution)}
-                    title="Gestionar estudiantes"
-                  >
-                    <UsersIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={` ${actionButtonClass} text-fuchsia-800 `}
-                    onClick={() => openRepresentativeManager(institution)}
-                    title="Gestionar representantes"
-                  >
-                    <UserPlusIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                  {institution.estado !== 'desafiliada' && (
+                <ArrowPathIcon className="h-4 w-4" aria-hidden />
+                Refrescar
+              </Button>
+            </div>
+          }
+        />
+        <div className="mb-6">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre o ciudad" />
+        </div>
+        <DataTable
+          columns={[
+            {
+              Header: 'Portada',
+              accessor: 'portada_url',
+              Cell: ({ value, row }) => (
+                <div className="flex items-center gap-3">
+                  {value ? (
+                    <img
+                      src={resolveMediaUrl(value)}
+                      alt={row.nombre}
+                      className="h-12 w-16 rounded-2xl object-cover shadow-md"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-sky-200 to-rose-200 text-sm font-semibold text-slate-700 dark:from-slate-700 dark:to-slate-800 dark:text-slate-200">
+                      {(row.nombre ?? '?').slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              ),
+            },
+            { Header: 'Nombre', accessor: 'nombre' },
+            { Header: 'Ciudad', accessor: 'ciudad', Cell: ({ value }) => value || '—' },
+            { Header: 'Correo', accessor: 'email', Cell: ({ value }) => value || '—' },
+            { Header: 'Teléfono', accessor: 'telefono', Cell: ({ value }) => value || '—' },
+            {
+              Header: 'Estado',
+              accessor: 'estado',
+              Cell: ({ value }) => renderStatusBadge(value),
+            },
+          ]}
+          data={filteredInstitutions}
+          emptyMessage={'Aún no hay instituciones registradas'}
+          loading={loading}
+          renderActions={(institution) => {
+            const isDeleted = Boolean(institution.eliminado);
+            return (
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className={`${actionButtonClass} text-sky-500`}
+                  onClick={() => openDetailModal(institution)}
+                  title="Ver detalle"
+                >
+                  <EyeIcon className="h-5 w-5" aria-hidden />
+                </button>
+                {!isDeleted ? (
+                  <>
+                    <button
+                      type="button"
+                      className={` ${actionButtonClass} text-green-500 `}
+                      onClick={() => openEditModal(institution)}
+                      title="Editar"
+                    >
+                      <PencilSquareIcon className="h-5 w-5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={` ${actionButtonClass} text-orange-500 `}
+                      onClick={() => openStudentManager(institution)}
+                      title="Gestionar estudiantes"
+                    >
+                      <UsersIcon className="h-5 w-5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={` ${actionButtonClass} text-fuchsia-800 `}
+                      onClick={() => openRepresentativeManager(institution)}
+                      title="Gestionar representantes"
+                    >
+                      <UserPlusIcon className="h-5 w-5" aria-hidden />
+                    </button>
+                    {institution.estado !== 'desafiliada' && (
+                      <button
+                        type="button"
+                        className={warningActionButtonClass}
+                        onClick={() => openDisaffiliateModal(institution)}
+                        title="Desafiliar"
+                      >
+                        <UserMinusIcon className="h-5 w-5" aria-hidden />
+                      </button>
+                    )}
+                    {institution.estado === 'desafiliada' && (
+                      <button
+                        type="button"
+                        className={actionButtonClass}
+                        onClick={() => openReaffiliateModal(institution)}
+                        title="Reafiliar"
+                      >
+                        <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={warningActionButtonClass}
-                      onClick={() => openDisaffiliateModal(institution)}
-                      title="Desafiliar"
+                      onClick={() => openSanctionModal(institution)}
+                      title="Gestionar sanción"
                     >
-                      <UserMinusIcon className="h-5 w-5" aria-hidden />
+                      <ShieldExclamationIcon className="h-5 w-5" aria-hidden />
                     </button>
-                  )}
-                  {institution.estado === 'desafiliada' && (
+                    {institution.sancion_activa && (
+                      <button
+                        type="button"
+                        className={`${actionButtonClass} text-slate-500`}
+                        onClick={() => handleLiftSanction(institution)}
+                        title="Levantar sanción"
+                        disabled={isProcessingAction}
+                      >
+                        <ArrowPathIcon className="h-5 w-5" aria-hidden />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className={actionButtonClass}
-                      onClick={() => openReaffiliateModal(institution)}
-                      title="Reafiliar"
+                      className={dangerActionButtonClass}
+                      onClick={() => openDeleteModal(institution)}
+                      title="Eliminar"
                     >
-                      <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
+                      <TrashIcon className="h-5 w-5" aria-hidden />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className={warningActionButtonClass}
-                    onClick={() => openSanctionModal(institution)}
-                    title="Gestionar sanción"
-                  >
-                    <ShieldExclamationIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                  {institution.sancion_activa && (
+                  </>
+                ) : (
+                  <>
                     <button
                       type="button"
                       className={`${actionButtonClass} text-slate-500`}
-                      onClick={() => handleLiftSanction(institution)}
-                      title="Levantar sanción"
+                      onClick={() => handleRestore(institution)}
+                      title="Restaurar institución"
                       disabled={isProcessingAction}
                     >
                       <ArrowPathIcon className="h-5 w-5" aria-hidden />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className={dangerActionButtonClass}
-                    onClick={() => openDeleteModal(institution)}
-                    title="Eliminar"
-                  >
-                    <TrashIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className={`${actionButtonClass} text-slate-500`}
-                    onClick={() => handleRestore(institution)}
-                    title="Restaurar institución"
-                    disabled={isProcessingAction}
-                  >
-                    <ArrowPathIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${dangerActionButtonClass} text-red-600`}
-                    onClick={() => openDeleteModal(institution)}
-                    title="Eliminar permanentemente"
-                  >
-                    <NoSymbolIcon className="h-5 w-5" aria-hidden />
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        }}
-      />
-    </Card>
+                    <button
+                      type="button"
+                      className={`${dangerActionButtonClass} text-red-600`}
+                      onClick={() => openDeleteModal(institution)}
+                      title="Eliminar permanentemente"
+                    >
+                      <NoSymbolIcon className="h-5 w-5" aria-hidden />
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          }}
+        />
+      </Card>
       <Modal
         isOpen={isDetailOpen}
         onClose={closeDetailModal}
@@ -1723,7 +1720,7 @@ export const Institutions = () => {
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-200">Listado actual</h4>
-               
+
               </div>
               <div className="space-y-3 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1960,9 +1957,8 @@ export const Institutions = () => {
               type="button"
               role="tab"
               aria-selected={representativeManagerTab === 'list'}
-              className={`${tabBaseClasses} ${
-                representativeManagerTab === 'list' ? tabActiveClasses : tabInactiveClasses
-              }`}
+              className={`${tabBaseClasses} ${representativeManagerTab === 'list' ? tabActiveClasses : tabInactiveClasses
+                }`}
               onClick={() => setRepresentativeManagerTab('list')}
             >
               Representantes
@@ -1971,9 +1967,8 @@ export const Institutions = () => {
               type="button"
               role="tab"
               aria-selected={representativeManagerTab === 'form'}
-              className={`${tabBaseClasses} ${
-                representativeManagerTab === 'form' ? tabActiveClasses : tabInactiveClasses
-              }`}
+              className={`${tabBaseClasses} ${representativeManagerTab === 'form' ? tabActiveClasses : tabInactiveClasses
+                }`}
               onClick={() => {
                 if (representativeFormMode !== 'edit') {
                   resetRepresentativeForm(activeInstitution);
@@ -2066,11 +2061,10 @@ export const Institutions = () => {
                           <p className="text-xs text-slate-500 dark:text-slate-300">{representative.email ?? '—'}</p>
                           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider">
                             <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 ${
-                                representative.activo
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 ${representative.activo
                                   ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100'
                                   : 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-100'
-                              }`}
+                                }`}
                             >
                               {representative.activo ? 'Activo' : 'Inactivo'}
                             </span>
@@ -2386,6 +2380,6 @@ export const Institutions = () => {
         </p>
       </Modal>
     </>
-    
+
   );
 };

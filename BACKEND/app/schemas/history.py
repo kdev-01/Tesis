@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from typing import Literal
-
+from typing import Literal, Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -15,7 +14,7 @@ class HistoryRecord(BaseModel):
     accion: str
     descripcion: str
     severidad: str = "info"
-    metadata: dict | None = None
+    metadata: Any | None = None
     actor_id: int | None = None
     actor_nombre: str | None = None
     registrado_en: datetime
