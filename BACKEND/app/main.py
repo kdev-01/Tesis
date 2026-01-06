@@ -15,6 +15,7 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import ApplicationError
 from app.core.logging import get_logger, setup_logging
+from app.middlewareMonitor import ResourceMonitorMiddleware
 
 setup_logging()
 logger = get_logger(__name__)
@@ -28,6 +29,8 @@ def root():
 media_directory = Path(settings.media_root).expanduser().resolve()
 media_directory.mkdir(parents=True, exist_ok=True)
 app.mount(settings.media_url_path, StaticFiles(directory=media_directory), name="media")
+
+app.add_middleware(ResourceMonitorMiddleware)
 
 if settings.cors_allow_origins:
     allow_origins = settings.cors_allow_origins

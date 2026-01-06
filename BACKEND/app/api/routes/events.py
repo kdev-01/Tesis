@@ -43,7 +43,6 @@ from app.schemas.registration import (
 )
 from app.schemas.schedule import ScheduleRequest
 from app.schemas.user import UserBase
-from app.monitor import medir_recursos
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -172,7 +171,6 @@ async def get_event_detail(
 
 
 @router.post("/", response_model=ResponseEnvelope[Event], status_code=status.HTTP_201_CREATED)
-@medir_recursos
 async def create_event(
     request: Request,
     session: AsyncSession = Depends(get_session),
@@ -340,7 +338,6 @@ async def reject_invitation(
     "/{event_id}/registrations/me",
     response_model=ResponseEnvelope[RegistrationSnapshot],
 )
-@medir_recursos
 async def get_my_registration(
     event_id: int,
     session: AsyncSession = Depends(get_session),
@@ -477,7 +474,6 @@ async def upload_my_student_documents_batch(
     "/{event_id}/institutions/{institution_id}/documents/review",
     response_model=ResponseEnvelope[RegistrationSnapshot],
 )
-@medir_recursos
 async def review_institution_documents(
     event_id: int,
     institution_id: int,
@@ -611,7 +607,6 @@ async def get_event_standings(
     "/{event_id}/schedule",
     response_model=ResponseEnvelope[list[FixtureMatch]],
 )
-@medir_recursos
 async def generate_event_schedule(
     event_id: int,
     payload: ScheduleRequest | None = None,
