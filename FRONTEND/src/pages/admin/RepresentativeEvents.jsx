@@ -125,6 +125,13 @@ const AUDIT_STATUS_META = {
   pendiente: { label: 'En revisión', color: 'neutral' },
 };
 
+const DOCUMENT_STATUS_META = {
+  aprobado: { label: 'Aprobado', color: 'success' },
+  correccion: { label: 'Corrección', color: 'warning' },
+  rechazada: { label: 'Rechazado', color: 'danger' },
+  pendiente: { label: 'Pendiente', color: 'neutral' },
+};
+
 const getStageKey = (stage) => {
   const normalized = (stage ?? '').toLowerCase();
   return STAGE_ORDER.includes(normalized) ? normalized : 'borrador';
@@ -1743,6 +1750,14 @@ export const RepresentativeEvents = () => {
                                 const normalizedId = rawId.toLowerCase();
                                 const existingDoc =
                                   normalizedDocuments.get(normalizedId) ?? null;
+                                const reviewState = (
+                                  existingDoc?.estado_revision ?? 'pendiente'
+                                ).toLowerCase();
+                                const reviewMeta =
+                                  DOCUMENT_STATUS_META[reviewState] ??
+                                  DOCUMENT_STATUS_META.pendiente;
+                                const reviewNote = existingDoc?.observaciones_revision;
+                                
                                 const documentUrl = existingDoc?.archivo_url
                                   ? resolveMediaUrl(existingDoc.archivo_url)
                                   : null;
@@ -1773,19 +1788,41 @@ export const RepresentativeEvents = () => {
                                     key={normalizedId || rawId}
                                     className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3 text-sm dark:border-slate-700/60 dark:bg-slate-800/40"
                                   >
-                                    <p className="font-semibold text-slate-700 dark:text-slate-200">
-                                      {docType?.etiqueta ?? rawId}
-                                    </p>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="font-semibold text-slate-700 dark:text-slate-200">
+                                        {docType?.etiqueta ?? rawId}
+                                      </p>
+                                      {existingDoc && (
+                                        <Badge color={reviewMeta.color} size="sm">
+                                          {reviewMeta.label}
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <div className="mt-1 space-y-1 text-xs">
                                       {documentUrl ? (
-                                        <a
-                                          href={documentUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center text-primary-600 hover:underline dark:text-primary-300"
-                                        >
-                                          Ver documento actual
-                                        </a>
+                                        <>
+                                          <a
+                                            href={documentUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center text-primary-600 hover:underline dark:text-primary-300"
+                                          >
+                                            Ver documento actual
+                                          </a>
+                                          {reviewNote && (
+                                              <p
+                                                className={`mt-1 rounded p-1.5 font-medium ${
+                                                  ['correccion', 'rechazada'].includes(
+                                                    reviewState,
+                                                  )
+                                                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                                                    : 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
+                                                }`}
+                                              >
+                                                Observación: {reviewNote}
+                                              </p>
+                                            )}
+                                        </>
                                       ) : (
                                         <p className="text-amber-600 dark:text-amber-300">
                                           Pendiente de carga

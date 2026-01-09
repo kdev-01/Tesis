@@ -41,6 +41,8 @@ from app.schemas.registration import (
     StudentDocumentType,
     EventInstitutionCreate,
 )
+from app.schemas.results import MatchResultConfig, RegisterResultRequest
+from app.services.result_service import result_service
 from app.schemas.schedule import ScheduleRequest
 from app.schemas.user import UserBase
 
@@ -708,6 +710,47 @@ async def register_match_result(
     )
     meta_envelope = Meta(extra=meta) if meta else None
     return ResponseEnvelope(data=match, meta=meta_envelope)
+
+
+@router.get(
+    "/{event_id}/fixture/{match_id}/players",
+    response_model=ResponseEnvelope[MatchResultConfig],
+)
+async def get_match_players_config(
+    event_id: int,
+    match_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: UserBase = Depends(
+        require_roles("Administrador", "Representante de comisión")
+    ),
+) -> ResponseEnvelope[MatchResultConfig]:
+    config = await result_service.get_match_players(session, match_id=match_id)
+    if not config:
+         raise ApplicationError("Partido no encontrado", status_code=404)
+    return ResponseEnvelope(data=config)
+
+
+@router.post(
+    "/{event_id}/fixture/{match_id}/detailed_result",
+    response_model=ResponseEnvelope[FixtureMatch],
+)
+async def register_detailed_match_result(
+    event_id: int,
+    match_id: int,
+    payload: RegisterResultRequest,
+    session: AsyncSession = Depends(get_session),
+    user: UserBase = Depends(
+        require_roles("Administrador", "Representante de comisión")
+    ),
+) -> ResponseEnvelope[FixtureMatch]:
+    match = await result_service.register_result(
+        session,
+        match_id=match_id,
+        player_results=payload.results,
+        publish_news=payload.publish_news,
+        criterio=payload.criterio,
+    )
+    return ResponseEnvelope(data=FixtureMatch.model_validate(match, from_attributes=True))
 
 
 @router.post(

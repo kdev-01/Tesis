@@ -136,6 +136,53 @@ const TABS = [
   { id: 'championship', label: 'Campeonato' },
 ];
 
+// Configuración de campos para el MVP
+// Configuración de campos para el MVP
+const MVP_TABS = [
+  { id: 'general', label: 'General', icon: null },
+  { id: 'attack', label: 'Ataque', icon: null },
+  { id: 'distribution', label: 'Distribución', icon: null },
+  { id: 'defense', label: 'Defensa', icon: null },
+  { id: 'keeper', label: 'Portero', icon: null },
+];
+
+const MVP_FIELDS_CONFIG = [
+  { 
+    tab: 'general',
+    section: 'Info', 
+    fields: ['role_selection'], // Campo virtual para el dropdown
+    type: 'select', 
+    options: [
+        { value: '', label: 'Seleccionar...' },
+        { value: 'role_Keeper', label: 'Portero' },
+        { value: 'role_Defender', label: 'Defensa' },
+        { value: 'role_Midfielder', label: 'Mediocampo' },
+        { value: 'role_Attacker', label: 'Delantero' },
+    ]
+  },
+  { tab: 'general', section: 'Resumen', fields: ['rating'], type: 'number', readOnly: true },
+  { tab: 'general', section: 'Rendimiento', fields: ['minutes_played', 'goals', 'assists', 'was_fouled'], type: 'number' },
+  
+  { tab: 'attack', section: 'Disparos', fields: ['total_shots', 'shot_on_target', 'shot_off_target', 'blocked_shots'], type: 'number' },
+  { tab: 'attack', section: 'Oportunidades', fields: ['shot_accuracy', 'chances_created'], type: 'number' },
+
+  { tab: 'distribution', section: 'Pases', fields: ['touches', 'pass_success', 'key_passes'], type: 'number' },
+  { tab: 'distribution', section: 'Juego', fields: ['crosses', 'dribbles_succeeded'], type: 'number' },
+
+  { tab: 'defense', section: 'Entradas', fields: ['tackles_attempted', 'tackles_succeeded', 'interceptions', 'recoveries'], type: 'number' },
+  { tab: 'defense', section: 'Duelos', fields: ['duels_won', 'aerials_won'], type: 'number' },
+
+  { tab: 'keeper', section: 'Paradas', fields: ['saves', 'saves_inside_box', 'diving_save'], type: 'number' },
+  { tab: 'keeper', section: 'Juego Aéreo', fields: ['punches', 'throws', 'goals_conceded'], type: 'number' },
+
+  { type: 'hidden', fields: ['mvp'], value: false },
+  // Campos reales ocultos para mapeo
+  { type: 'hidden', fields: ['role_Keeper', 'role_Defender', 'role_Midfielder', 'role_Attacker'], value: false } 
+];
+
+// Función helper para aplanar la estructura de campos para la tabla
+const FLAT_FIELDS = MVP_FIELDS_CONFIG.flatMap(g => g.type !== 'hidden' ? g.fields.map(f => ({ key: f, type: g.type, section: g.section, readOnly: g.readOnly })) : []);
+
 export const AdminEventDetail = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -186,6 +233,9 @@ export const AdminEventDetail = () => {
     criterio: 'puntos',
     publishNews: true,
     submitting: false,
+    loadingPlayers: false,
+    playersConfig: null,
+    playerStats: {},
   });
   const [publishingNewsId, setPublishingNewsId] = useState(null);
   const [standingsModal, setStandingsModal] = useState({
@@ -195,6 +245,186 @@ export const AdminEventDetail = () => {
   });
   const [timelineModal, setTimelineModal] = useState({ open: false, values: {} });
   const [savingTimeline, setSavingTimeline] = useState(false);
+  const [performanceModal, setPerformanceModal] = useState({ open: false, match: null });
+  const [savingPerformance, setSavingPerformance] = useState(false);
+  const [loadingPerformance, setLoadingPerformance] = useState(false);
+  const [activePerformanceTab, setActivePerformanceTab] = useState('general');
+  const [playersStats, setPlayersStats] = useState([]);
+
+  // Cargar datos (Sin Backend - Solo Mock Inicial)
+  useEffect(() => {
+    if (performanceModal.open && performanceModal.match) {
+      setActivePerformanceTab('general'); // Reset tab
+      loadPerformanceData();
+    } else {
+      setPlayersStats([]); // Limpiar al cerrar
+    }
+  }, [performanceModal.open, performanceModal.match]);
+
+  const loadPerformanceData = useCallback(async () => {
+    setLoadingPerformance(true);
+    try {
+        const match = performanceModal.match;
+        // 1. Obtener datos existentes del backend
+        const existingData = await eventService.getMatchPerformance(match.id);
+
+        console.log("Existing Data:", existingData);
+        
+        const dataMap = new Map(existingData.map(d => [d.id_estudiante, d]));
+
+        // 2. Mapear jugadores del partido
+         const localPlayers = (match.equipo_local?.estudiantes ?? []).map(p => ({
+          ...p, team: match.equipo_local?.nombre_equipo, isLocal: true
+        }));
+        const visitorPlayers = (match.equipo_visitante?.estudiantes ?? []).map(p => ({
+          ...p, team: match.equipo_visitante?.nombre_equipo, isLocal: false
+        }));
+        
+        const allPlayers = [...localPlayers, ...visitorPlayers];
+
+        // 3. Mezclar estructura base con datos existentes
+        const mergedStats = allPlayers.map((student, index) => {
+          const stats = {};
+          // Correctly get student ID from enrollment object BEFORE lookup
+          const studentId = student.estudiante?.id ?? student.id; 
+          
+          
+          const existing = dataMap.get(studentId);
+          
+          if (index === 0) { // Log only first one using index
+             console.log("DEBUG: loadPerformanceData studentId lookup", {
+                 studentName: student.nombres,
+                 derivedStudentId: studentId,
+                 enrollmentId: student.id,
+                 estudianteObjId: student.estudiante?.id,
+                 foundInMap: !!existing,
+                 mapKeys: Array.from(dataMap.keys())
+             });
+          }
+
+          MVP_FIELDS_CONFIG.forEach(group => {
+              group.fields.forEach(f => {
+                  if (f === 'role_selection') return; // Skip virtual field
+                  if (existing && existing[f] !== undefined) {
+                      stats[f] = existing[f];
+                  } else {
+                      if (group.type === 'checkbox') stats[f] = false;
+                      else if (group.type === 'number') stats[f] = 0;
+                  }
+              });
+          });
+          
+          // Determine Role Selection
+          let selectedRole = '';
+          if (stats['role_Keeper']) selectedRole = 'role_Keeper';
+          else if (stats['role_Defender']) selectedRole = 'role_Defender';
+          else if (stats['role_Midfielder']) selectedRole = 'role_Midfielder';
+          else if (stats['role_Attacker']) selectedRole = 'role_Attacker';
+          stats.role_selection = selectedRole;
+          
+          // MVP Flag
+          stats.mvp = existing?.mvp ?? false;
+          
+          return {
+            id: studentId,
+            nombre: `${student.nombres} ${student.apellidos}`,
+            team: student.team,
+            isLocal: student.isLocal,
+            ...stats
+          };
+        });
+
+        setPlayersStats(mergedStats);
+    } catch (err) {
+        addToast({ title: 'Error cargando datos', description: err.message, status: 'error' });
+    } finally {
+        setLoadingPerformance(false);
+    }
+  }, [performanceModal.match, addToast]);
+
+  const handlePerformanceStatChange = (id, field, value, type) => {
+    const finalValue = type === 'checkbox' ? value : (type === 'select' ? value : Number(value));
+    setPlayersStats(prev => prev.map(p => {
+      if (p.id !== id) return p;
+
+      // Handle Role Selection Dropdown
+      if (field === 'role_selection') {
+          const roles = ['role_Attacker', 'role_Defender', 'role_Keeper', 'role_Midfielder'];
+          const updates = { role_selection: value };
+          roles.forEach(r => {
+              updates[r] = (r === value); // Set true only if matches selection
+          });
+          return { ...p, ...updates };
+      }
+
+      const newStats = { ...p, [field]: finalValue };
+      return newStats;
+    }));
+  };
+
+  const handleSavePerformance = async () => {
+    if (!performanceModal.match) return;
+    setSavingPerformance(true);
+    try {
+        const payload = playersStats.map(p => {
+            // Mapear al esquema del backend
+            const { id, nombre, team, isLocal, role_selection, ...rest } = p;
+            return {
+                id_estudiante: id,
+                ...rest
+            };
+        });
+
+        await eventService.saveMatchPerformance(performanceModal.match.id, payload);
+        addToast({ title: 'Datos guardados', description: 'El rendimiento se actualizó correctamente.', status: 'success' });
+        // Opcional: Cerrar o mantener abierto? "Los datos siempre se pueden editar y guardar"
+        // setPerformanceModal({ open: false, match: null }); 
+    } catch (err) {
+        addToast({ title: 'Error al guardar', description: err.message, status: 'error' });
+    } finally {
+        setSavingPerformance(false);
+    }
+  };
+
+  const handleCalculateMVP = async () => {
+      if (!performanceModal.match) return;
+      setLoadingPerformance(true); // Bloquear tabla
+      try {
+          // Primero guardamos lo actual para asegurar que el cálculo use lo último en pantalla
+          // O el backend usa lo que hay en DB? "Al dar click... bloquear".
+          // Asumimos que primero guardamos, luego calculamos. 
+          // O enviamos todo para cálculo? El endpoint de cálculo usa lo de la DB.
+          // Por seguridad, guardamos primero silenciosamente.
+          
+           const payload = playersStats.map(p => {
+              const { id, nombre, team, isLocal, role_selection, ...rest } = p;
+              return { id_estudiante: id, ...rest };
+           });
+           await eventService.saveMatchPerformance(performanceModal.match.id, payload);
+
+           // Ahora calculamos
+           const updatedStats = await eventService.calculateMatchMVP(performanceModal.match.id);
+           
+           // Actualizamos el estado con los nuevos ratings y flags
+           // Mapeamos de vuelta
+           const dataMap = new Map(updatedStats.map(d => [d.id_estudiante, d]));
+           
+           setPlayersStats(prev => prev.map(p => {
+               const coming = dataMap.get(p.id);
+               if (coming) {
+                   return { ...p, rating: coming.rating, mvp: coming.mvp };
+               }
+               return p;
+           }));
+
+           addToast({ title: 'MVP Calculado', description: 'Se han actualizado los ratings.', status: 'success' });
+
+      } catch (err) {
+          addToast({ title: 'Error calculando MVP', description: err.message, status: 'error' });
+      } finally {
+          setLoadingPerformance(false);
+      }
+  };
 
   useEffect(() => {
     setInstitutions([]);
@@ -327,8 +557,41 @@ export const AdminEventDetail = () => {
       criterio: match.criterio_resultado ?? 'puntos',
       publishNews: !match?.noticia_publicada,
       submitting: false,
+      loadingPlayers: true,
+      playersConfig: null,
+      playerStats: {},
     });
-  }, []);
+
+    eventService.getMatchPlayers(numericEventId, match.id)
+      .then((config) => {
+         const stats = {};
+         if (config?.players) {
+             config.players.forEach((p) => {
+                 stats[p.id] = {
+                     goles: p.goles ?? 0,
+                     puntos: p.puntos ?? 0,
+                     faltas: p.faltas ?? 0,
+                     tarjetas_amarillas: p.tarjetas_amarillas ?? 0,
+                     tarjetas_rojas: p.tarjetas_rojas ?? 0,
+                 };
+             });
+         }
+         setResultModal((prev) => ({
+             ...prev,
+             loadingPlayers: false,
+             playersConfig: config,
+             playerStats: stats,
+         }));
+      })
+      .catch((err) => {
+         addToast({
+            title: 'No se pudieron cargar los jugadores',
+            description: err?.message,
+            status: 'error',
+         });
+         setResultModal((prev) => ({ ...prev, loadingPlayers: false, open: false }));
+      });
+  }, [numericEventId, addToast]);
 
   const handleCloseResultModal = useCallback(() => {
     setResultModal({
@@ -345,39 +608,29 @@ export const AdminEventDetail = () => {
 
   const handleSubmitResult = useCallback(async () => {
     if (!numericEventId || !resultModal.match) return;
-    const localScore = Number(resultModal.localScore);
-    const visitorScore = Number(resultModal.visitorScore);
-    if (!Number.isFinite(localScore) || localScore < 0 || !Number.isFinite(visitorScore) || visitorScore < 0) {
-      addToast({
-        title: 'Revisa los puntajes',
-        description: 'Los puntajes deben ser números positivos.',
-        status: 'warning',
-      });
-      return;
-    }
-    const winnerId = Number(resultModal.winnerId);
-    if (!Number.isFinite(winnerId)) {
-      addToast({
-        title: 'Selecciona al equipo ganador',
-        description: 'Debes elegir a uno de los equipos participantes.',
-        status: 'warning',
-      });
-      return;
-    }
+    
     setResultModal((prev) => ({ ...prev, submitting: true }));
     try {
-      const { match: updated, meta } = await eventService.registerMatchResult(numericEventId, resultModal.match.id, {
-        puntaje_local: localScore,
-        puntaje_visitante: visitorScore,
-        criterio_resultado: resultModal.criterio,
-        ganador_inscripcion_id: winnerId,
-        publicar_noticia: Boolean(resultModal.publishNews),
-      });
+      const resultsWithId = Object.entries(resultModal.playerStats).map(([sId, stats]) => ({
+         estudiante_id: Number(sId),
+         ...stats
+      }));
+
+      const { match: updated, meta } = await eventService.registerDetailedMatchResult(
+         numericEventId, 
+         resultModal.match.id, 
+         {
+            results: resultsWithId,
+            publish_news: Boolean(resultModal.publishNews),
+            criterio: resultModal.criterio,
+         }
+      );
+
       if (updated) {
         upsertMatchInSchedule(updated);
         addToast({
           title: 'Resultado registrado',
-          description: 'El marcador fue guardado y el calendario se actualizó.',
+          description: 'El resultado se calculó y guardó correctamente.',
           status: 'success',
         });
         if (meta?.extra?.news_id) {
@@ -1442,7 +1695,7 @@ export const AdminEventDetail = () => {
                             ? 'space-y-2 rounded-2xl border border-emerald-200/70 bg-emerald-50/80 p-3 dark:border-emerald-500/40 dark:bg-emerald-900/30'
                             : 'space-y-2 rounded-2xl border border-slate-200/70 bg-white/60 p-3 dark:border-slate-700/60 dark:bg-slate-900/60';
                           const canPublishNews = !match?.noticia_publicada && hasScores;
-                          const canEditResult = canRegisterResult(match);
+                          const canEditResult = true; // Permite editar siempre los resultados
                           return (
                             <div
                               key={match.id}
@@ -1562,10 +1815,17 @@ export const AdminEventDetail = () => {
                                     </Button>
                                   )}
                                   {canEditResult && (
-                                    <Button type="button" size="sm" onClick={() => handleOpenResultModal(match)}>
-                                      Registrar resultado
+                                    <Button type="button" variant={match.estado === 'completado' ? 'ghost' : 'primary'} size="sm" onClick={() => handleOpenResultModal(match)}>
+                                      {match.estado === 'completado' ? 'Editar resultado' : 'Registrar resultado'}
                                     </Button>
                                   )}
+                                  {<Button
+                                      size="sm"
+                                      variant="outline" 
+                                      onClick={() => setPerformanceModal({ open: true, match: match })}
+                                    >
+                                        MVP
+                                    </Button>}
                                 </div>
                               </div>
                             </div>
@@ -1594,61 +1854,166 @@ export const AdminEventDetail = () => {
         onClose={handleCloseResultModal}
         onConfirm={handleSubmitResult}
         confirmLabel={resultModal.submitting ? 'Guardando…' : 'Guardar resultado'}
-        confirmDisabled={resultModal.submitting}
+        confirmDisabled={resultModal.submitting || resultModal.loadingPlayers}
         title="Registrar resultado"
-        description="Actualiza el marcador y define el equipo ganador para continuar con el campeonato."
+        description="Ingresa las estadísticas de los jugadores para calcular automáticamente el marcador."
+        size="7xl"
       >
-        {resultModal.match ? (
-          <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Puntaje local</label>
-                <input
-                  type="number"
-                  min="0"
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200 dark:border-slate-700 dark:bg-slate-900/70"
-                  value={resultModal.localScore}
-                  onChange={(event) =>
-                    setResultModal((prev) => ({ ...prev, localScore: event.target.value ?? '' }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Puntaje visitante</label>
-                <input
-                  type="number"
-                  min="0"
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200 dark:border-slate-700 dark:bg-slate-900/70"
-                  value={resultModal.visitorScore}
-                  onChange={(event) =>
-                    setResultModal((prev) => ({ ...prev, visitorScore: event.target.value ?? '' }))
-                  }
-                />
-              </div>
+        {resultModal.loadingPlayers ? (
+          <div className="flex h-32 items-center justify-center">
+            <p className="text-sm text-slate-500">Cargando jugadores…</p>
+          </div>
+        ) : resultModal.playersConfig ? (
+          <div className="space-y-6">
+             {/* Debug info (hidden in prod) */}
+             {/* <div className="text-xs text-slate-400">Sport detected: {resultModal.playersConfig.deporte_nombre}</div> */}
+             
+            <div className="flex flex-col gap-8 md:flex-row">
+              {['local', 'visitor'].map((side) => {
+                const teamId =
+                  side === 'local'
+                    ? resultModal.playersConfig.local_team_id
+                    : resultModal.playersConfig.visitor_team_id;
+                const teamName =
+                  side === 'local'
+                    ? resultModal.match?.equipo_local?.nombre_equipo
+                    : resultModal.match?.equipo_visitante?.nombre_equipo;
+                const players = (resultModal.playersConfig.players || []).filter(
+                  (p) => p.equipo_id === teamId,
+                );
+                
+                // Sport detection logic
+                const sportName = (resultModal.playersConfig.deporte_nombre || '').toLowerCase();
+                const isSoccer = sportName.includes('futs') || sportName.includes('fut') || sportName.includes('fútbol');
+                
+                console.log('Sport detected:', sportName);
+
+                return (
+                  <div key={side} className="flex-1 space-y-2">
+                    <h4 className="font-bold text-lg text-slate-800 dark:text-slate-100 uppercase border-b pb-1 px-1">
+                        {teamName}
+                    </h4>
+                    <div className="relative overflow-x-auto border rounded-xl shadow-sm bg-white dark:bg-slate-800">
+                      <table className="w-full text-xs text-left whitespace-nowrap">
+                        <thead className="text-xs uppercase bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 sticky top-0 z-20">
+                          <tr>
+                            <th className="px-3 py-3 sticky left-0 bg-slate-200 dark:bg-slate-800 z-30 border-r dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                Jugador
+                            </th>
+                            {isSoccer ? (
+                              <>
+                                <th className="px-2 py-3 text-center min-w-[3rem] border-r dark:border-slate-600">G</th>
+                                <th className="px-2 py-3 text-center min-w-[3rem] border-r dark:border-slate-600">TA</th>
+                                <th className="px-2 py-3 text-center min-w-[3rem] border-r dark:border-slate-600">TR</th>
+                              </>
+                            ) : (
+                              <>
+                                <th className="px-2 py-3 text-center min-w-[3rem] border-r dark:border-slate-600">Pts</th>
+                                <th className="px-2 py-3 text-center min-w-[3rem] border-r dark:border-slate-600">Faltas</th>
+                              </>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                          {players.map((p) => {
+                            const stats = resultModal.playerStats[p.id] || {};
+                            
+                            // Handler uses functional update to avoid stale closures
+                            const handleValChange = (field, valStr) => {
+                              const val = valStr === '' ? 0 : Number(valStr);
+                              setResultModal((prev) => ({
+                                ...prev,
+                                playerStats: {
+                                  ...prev.playerStats,
+                                  [p.id]: {
+                                    ...prev.playerStats[p.id],
+                                    [field]: val 
+                                  },
+                                },
+                              }));
+                            };
+
+                            return (
+                              <tr key={p.id} className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
+                                <td className="px-3 py-2 sticky left-0 bg-white dark:bg-slate-900 z-20 font-medium text-slate-700 dark:text-slate-200 border-r dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                    <div className="flex flex-col">
+                                        <span>{p.nombres}</span>
+                                        <span className="text-[10px] font-normal text-slate-400">{p.apellidos}</span>
+                                    </div>
+                                </td>
+                                {isSoccer ? (
+                                  <>
+                                    <td className="px-1 py-1 text-center border-r dark:border-slate-700/50">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full text-center text-xs border border-transparent rounded px-1 py-1 bg-transparent focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-primary-500 hover:border-slate-300 transition-all font-semibold"
+                                        value={stats.goles ?? ''}
+                                        onChange={(e) => handleValChange('goles', e.target.value)}
+                                        onFocus={(e) => e.target.select()}
+                                      />
+                                    </td>
+                                    <td className="px-1 py-1 text-center border-r dark:border-slate-700/50">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full text-center text-xs border border-transparent rounded px-1 py-1 bg-transparent focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-yellow-400 hover:border-slate-300 transition-all"
+                                        value={stats.tarjetas_amarillas ?? ''}
+                                        onChange={(e) => handleValChange('tarjetas_amarillas', e.target.value)}
+                                        onFocus={(e) => e.target.select()}
+                                      />
+                                    </td>
+                                    <td className="px-1 py-1 text-center border-r dark:border-slate-700/50">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full text-center text-xs border border-transparent rounded px-1 py-1 bg-transparent focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-red-500 hover:border-slate-300 transition-all"
+                                        value={stats.tarjetas_rojas ?? ''}
+                                        onChange={(e) => handleValChange('tarjetas_rojas', e.target.value)}
+                                        onFocus={(e) => e.target.select()}
+                                      />
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="px-1 py-1 text-center border-r dark:border-slate-700/50">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full text-center text-xs border border-transparent rounded px-1 py-1 bg-transparent focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-primary-500 hover:border-slate-300 transition-all font-semibold"
+                                        value={stats.puntos ?? ''}
+                                        onChange={(e) => handleValChange('puntos', e.target.value)}
+                                        onFocus={(e) => e.target.select()}
+                                      />
+                                    </td>
+                                    <td className="px-1 py-1 text-center border-r dark:border-slate-700/50">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full text-center text-xs border border-transparent rounded px-1 py-1 bg-transparent focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-primary-500 hover:border-slate-300 transition-all"
+                                        value={stats.faltas ?? ''}
+                                        onChange={(e) => handleValChange('faltas', e.target.value)}
+                                        onFocus={(e) => e.target.select()}
+                                      />
+                                    </td>
+                                  </>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+
+            <div className="grid gap-4 border-t border-slate-100 pt-4 md:grid-cols-2 dark:border-slate-700">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Equipo ganador</label>
-                <Select
-                  value={resultModal.winnerId}
-                  onChange={(value) =>
-                    setResultModal((prev) => ({ ...prev, winnerId: value ? Number(value) : null }))
-                  }
-                  options={[
-                    {
-                      value: resultModal.match?.equipo_local?.id,
-                      label: resultModal.match?.equipo_local?.nombre_equipo ?? 'Equipo local',
-                    },
-                    {
-                      value: resultModal.match?.equipo_visitante?.id,
-                      label: resultModal.match?.equipo_visitante?.nombre_equipo ?? 'Equipo visitante',
-                    },
-                  ].filter((option) => option.value)}
-                  placeholder="Selecciona al ganador"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Criterio</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Criterio del resultado
+                </label>
                 <input
                   type="text"
                   maxLength={50}
@@ -1657,32 +2022,36 @@ export const AdminEventDetail = () => {
                   onChange={(event) =>
                     setResultModal((prev) => ({ ...prev, criterio: event.target.value || '' }))
                   }
-                  placeholder="puntos, penales…"
+                  placeholder="Ej: Penales, Tiempo extra…"
                 />
               </div>
+              <div className="flex items-center">
+                {!resultModal.match?.noticia_publicada ? (
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(resultModal.publishNews)}
+                      onChange={(event) =>
+                        setResultModal((prev) => ({ ...prev, publishNews: event.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200 dark:border-slate-600 dark:bg-slate-900"
+                    />
+                    Publicar resultado automáticamente en Noticias
+                  </label>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-300">
+                    La noticia de este enfrentamiento ya fue publicada.
+                  </p>
+                )}
+              </div>
             </div>
-              {!resultModal.match?.noticia_publicada ? (
-                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(resultModal.publishNews)}
-                    onChange={(event) =>
-                      setResultModal((prev) => ({ ...prev, publishNews: event.target.checked }))
-                    }
-                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200 dark:border-slate-600 dark:bg-slate-900"
-                  />
-                  Publicar resultado en Noticias
-                </label>
-              ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-300">
-                  La noticia de este enfrentamiento ya fue publicada.
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-600 dark:text-slate-300">Selecciona un partido para registrar el marcador.</p>
-          )}
-        </Modal>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            No se pudieron cargar los datos del partido.
+          </p>
+        )}
+      </Modal>
       <Modal
         isOpen={standingsModal.open}
         onClose={handleCloseStandings}
@@ -2002,6 +2371,178 @@ export const AdminEventDetail = () => {
             </label>
           )}
         </div>
+      </Modal>
+
+
+      {/* Modal de Performance MVP Integrado - Tabla Ancha */}
+      <Modal
+        isOpen={performanceModal.open}
+        onClose={() => setPerformanceModal({ open: false, match: null })}
+        title="Estadísticas de Partido"
+        description="Edita las métricas de rendimiento para todos los jugadores."
+        size="7xl"
+        footer={
+          <div className="flex justify-end gap-3 mt-4">
+             <Button 
+                variant="outline" 
+                onClick={() => setPerformanceModal({ open: false, match: null })}
+                disabled={loadingPerformance || savingPerformance}
+             >
+                Cerrar
+             </Button>
+             <Button 
+                variant="accent" 
+                onClick={handleCalculateMVP}
+                disabled={loadingPerformance || savingPerformance}
+             >
+                {loadingPerformance ? 'Calculando...' : 'Seleccionar MVP'}
+             </Button>
+             <Button 
+                variant="primary" 
+                onClick={handleSavePerformance}
+                disabled={loadingPerformance || savingPerformance}
+             >
+                {savingPerformance ? 'Guardando...' : 'Guardar'}
+             </Button>
+          </div>
+        }
+      >
+        {loadingPerformance ? (
+          <p className="text-center p-4 text-slate-500">Preparando tabla de jugadores...</p>
+        ) : (
+          <div className="flex flex-col gap-4 h-[70vh]">
+            
+            {/* Tabs de Navegación */}
+            <div className="flex space-x-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-700/50">
+                {MVP_TABS.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActivePerformanceTab(tab.id)}
+                        className={`
+                            w-full rounded-lg py-2.5 text-sm font-medium leading-5
+                            ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2
+                            ${
+                            activePerformanceTab === tab.id
+                                ? 'bg-white text-primary-700 shadow dark:bg-slate-800 dark:text-primary-300'
+                                : 'text-slate-600 hover:bg-white/[0.12] hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                            }
+                        `}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                {['Local', 'Visitante'].map((teamType) => {
+                const isLocalTeam = teamType === 'Local';
+                const teamName = isLocalTeam 
+                    ? performanceModal.match?.equipo_local?.nombre_equipo 
+                    : performanceModal.match?.equipo_visitante?.nombre_equipo;
+                
+                // Filtrar jugadores por equipo
+                const teamPlayers = playersStats.filter(p => p.isLocal === isLocalTeam);
+                
+                // Filtrar campos por la pestaña activa
+                const currentFields = MVP_FIELDS_CONFIG.filter(f => f.tab === activePerformanceTab);
+                
+                // Flatten fields for table header
+                const tableColumns = currentFields.flatMap(g => g.fields.map(f => ({ key: f, ...g })));
+
+                if (teamPlayers.length === 0) return (
+                    <div key={teamType} className="text-sm text-slate-400 p-2">
+                        No hay jugadores registrados en el equipo {teamType}.
+                    </div>
+                );
+
+                return (
+                    <div key={teamType} className="space-y-2">
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 uppercase border-b pb-1 px-1">
+                        {teamName || 'Equipo'}
+                    </h3>
+                    
+                    {/* Contenedor con scroll horizontal para la tabla */}
+                    <div className="relative overflow-x-auto border rounded-2xl shadow-sm bg-white dark:bg-slate-800">
+                        <table className="w-full text-xs text-left whitespace-nowrap">
+                        <thead className="text-xs uppercase bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 sticky top-0 z-20">
+                            <tr>
+                            {/* Columna Fija: Nombre del Jugador */}
+                            <th className="px-3 py-3 sticky left-0 bg-slate-200 dark:bg-slate-800 z-30 border-r dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-48">
+                                Jugador
+                            </th>
+                            {/* Columnas Dinámicas de Estadísticas */}
+                            {tableColumns.map(f => (
+                                <th key={f.key} className="px-2 py-3 text-center min-w-[6rem] border-r dark:border-slate-600 last:border-0" title={f.key}>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <span className="font-bold">
+                                            {f.key === 'role_selection' ? 'Posición' : f.key.replace('role_', '').replace(/_/g, ' ').substring(0, 10)}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-normal lowercase">{f.section}</span>
+                                    </div>
+                                </th>
+                            ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                            {teamPlayers.map(player => (
+                            <tr key={player.id} className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
+                                {/* Celda Fija: Nombre del Jugador */}
+                                <td className="px-3 py-2 sticky left-0 bg-white dark:bg-slate-900 z-20 font-medium text-slate-700 dark:text-slate-200 border-r dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                <div className="flex items-center gap-2">
+                                    <div className="truncate w-40" title={player.nombre}>
+                                        {player.nombre}
+                                    </div>
+                                    {player.mvp && <span className="flex-shrink-0 inline-flex items-center rounded-md bg-yellow-100 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800 border border-yellow-200">MVP</span>}
+                                </div>
+                                </td>
+                                {/* Celdas de Inputs */}
+                                {tableColumns.map(f => (
+                                <td key={f.key} className={`px-1 py-1 text-center border-r dark:border-slate-700/50 last:border-0 ${f.key === 'rating' ? 'bg-slate-50 dark:bg-slate-800' : ''}`}>
+                                    {f.type === 'select' ? (
+                                        <select
+                                            className="w-full text-xs border-0 rounded px-1 py-1 bg-transparent focus:ring-1 focus:ring-primary-500 cursor-pointer"
+                                            value={player[f.key] || ''}
+                                            onChange={(e) => handlePerformanceStatChange(player.id, f.key, e.target.value, 'select')}
+                                            disabled={loadingPerformance}
+                                        >
+                                            {f.options.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    ) : f.type === 'checkbox' ? (
+                                    <div className="flex justify-center">
+                                        <input 
+                                            type="checkbox" 
+                                            className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-50"
+                                            checked={!!player[f.key]}
+                                            onChange={(e) => handlePerformanceStatChange(player.id, f.key, e.target.checked, 'checkbox')}
+                                            disabled={loadingPerformance} 
+                                        />
+                                    </div>
+                                    ) : (
+                                    <input 
+                                        type="number" 
+                                        className={`w-full min-w-[3rem] text-center text-xs border border-transparent rounded px-1 py-1 bg-transparent focus:outline-none transition-all ${f.readOnly ? 'font-bold text-slate-500 cursor-not-allowed' : 'hover:border-slate-300 focus:bg-white dark:focus:bg-slate-800 focus:border-primary-500'}`}
+                                        value={player[f.key]}
+                                        onChange={(e) => !f.readOnly && handlePerformanceStatChange(player.id, f.key, e.target.value, 'number')}
+                                        onFocus={(e) => !f.readOnly && e.target.select()}
+                                        readOnly={f.readOnly}
+                                        disabled={loadingPerformance} 
+                                    />
+                                    )}
+                                </td>
+                                ))}
+                            </tr>
+                            ))}
+                        </tbody>
+                        </table>
+                    </div>
+                    </div>
+                );
+                })}
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   );

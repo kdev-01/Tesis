@@ -232,7 +232,41 @@ export const eventService = {
   async deleteSchedule(eventId) {
     await httpClient(`/events/${eventId}/schedule`, { method: 'DELETE' });
   },
+  async getMatchPerformance(matchId) {
+    if (!matchId) return [];
+    const response = await httpClient(`/matches/${matchId}/performance`);
+    return response ?? [];
+  },
+  async saveMatchPerformance(matchId, data) {
+    if (!matchId) return [];
+    const response = await httpClient(`/matches/${matchId}/performance`, {
+      method: 'POST',
+      body: data,
+    });
+    return response.data ?? [];
+  },
+  async calculateMatchMVP(matchId) {
+    if (!matchId) return [];
+    const response = await httpClient(`/matches/${matchId}/calculate-mvp`, {
+      method: 'POST',
+      body: {},
+    });
+    return response.data ?? [];
+  },
+  async getMatchPlayers(eventId, matchId) {
+    if (!eventId || !matchId) return null;
+    const response = await httpClient(`/events/${eventId}/fixture/${matchId}/players`);
+    return response?.data ?? null;
+  },
+  async registerDetailedMatchResult(eventId, matchId, payload) {
+    const response = await httpClient(`/events/${eventId}/fixture/${matchId}/detailed_result`, {
+      method: 'POST',
+      body: payload,
+    });
+    return { match: response?.data ?? null, meta: response?.meta ?? null };
+  },
 };
+
 
 export const newsService = {
   async list({

@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Float,
     String,
     Text,
     UniqueConstraint,
@@ -521,3 +522,99 @@ class EventoPartido(Base):
     ganador_inscripcion: Mapped[EventoInscripcion | None] = relationship(
         "EventoInscripcion", foreign_keys=[ganador_inscripcion_id], lazy="joined"
     )
+
+    performances: Mapped[List["EventoPartidoEstudianteRendimiento"]] = relationship(
+        "EventoPartidoEstudianteRendimiento", back_populates="partido", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    resultados_jugadores: Mapped[List["EventoPartidoResultadoJugador"]] = relationship(
+        "EventoPartidoResultadoJugador", back_populates="partido", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class EventoPartidoEstudianteRendimiento(Base):
+    __tablename__ = "evento_partido_estudiantes_rendimiento"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_evento_partido: Mapped[int] = mapped_column(
+        ForeignKey("eventos_partidos.id", ondelete="CASCADE"), nullable=False
+    )
+    id_estudiante: Mapped[int] = mapped_column(
+        ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Roles (0 or 1)
+    role_attacker: Mapped[int] = mapped_column(Integer, default=0)
+    role_defender: Mapped[int] = mapped_column(Integer, default=0)
+    role_keeper: Mapped[int] = mapped_column(Integer, default=0)
+    role_midfielder: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Stats
+    rating: Mapped[float] = mapped_column(Float, default=0.0)
+    minutes_played: Mapped[int] = mapped_column(Integer, default=0)
+    goals: Mapped[int] = mapped_column(Integer, default=0)
+    assists: Mapped[int] = mapped_column(Integer, default=0)
+    was_fouled: Mapped[int] = mapped_column(Integer, default=0)
+    
+    total_shots: Mapped[int] = mapped_column(Integer, default=0)
+    shot_on_target: Mapped[int] = mapped_column(Integer, default=0)
+    shot_off_target: Mapped[int] = mapped_column(Integer, default=0)
+    blocked_shots: Mapped[int] = mapped_column(Integer, default=0)
+    shot_accuracy: Mapped[float] = mapped_column(Float, default=0.0)
+    chances_created: Mapped[int] = mapped_column(Integer, default=0)
+    
+    touches: Mapped[int] = mapped_column(Integer, default=0)
+    pass_success: Mapped[float] = mapped_column(Float, default=0.0)
+    key_passes: Mapped[int] = mapped_column(Integer, default=0)
+    crosses: Mapped[int] = mapped_column(Integer, default=0)
+    dribbles_succeeded: Mapped[int] = mapped_column(Integer, default=0)
+    
+    tackles_attempted: Mapped[int] = mapped_column(Integer, default=0)
+    tackles_succeeded: Mapped[int] = mapped_column(Integer, default=0)
+    interceptions: Mapped[int] = mapped_column(Integer, default=0)
+    recoveries: Mapped[int] = mapped_column(Integer, default=0)
+    duels_won: Mapped[int] = mapped_column(Integer, default=0)
+    aerials_won: Mapped[int] = mapped_column(Integer, default=0)
+    
+    saves: Mapped[int] = mapped_column(Integer, default=0)
+    saves_inside_box: Mapped[int] = mapped_column(Integer, default=0)
+    diving_save: Mapped[int] = mapped_column(Integer, default=0)
+    punches: Mapped[int] = mapped_column(Integer, default=0)
+    throws: Mapped[int] = mapped_column(Integer, default=0)
+    goals_conceded: Mapped[int] = mapped_column(Integer, default=0)
+    
+    mvp: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    partido: Mapped[EventoPartido] = relationship("EventoPartido", back_populates="performances")
+    estudiante: Mapped["Estudiante"] = relationship("Estudiante", lazy="joined")
+
+
+class EventoPartidoResultadoJugador(Base):
+    __tablename__ = "evento_partido_resultados_jugadores"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    evento_partido_id: Mapped[int] = mapped_column(
+        ForeignKey("eventos_partidos.id", ondelete="CASCADE"), nullable=False
+    )
+    estudiante_id: Mapped[int] = mapped_column(
+        ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False
+    )
+
+    goles: Mapped[int] = mapped_column(Integer, default=0)
+    puntos: Mapped[int] = mapped_column(Integer, default=0)
+    faltas: Mapped[int] = mapped_column(Integer, default=0)
+    tarjetas_amarillas: Mapped[int] = mapped_column(Integer, default=0)
+    tarjetas_rojas: Mapped[int] = mapped_column(Integer, default=0)
+
+    creado_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    actualizado_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        server_onupdate=func.now(),
+    )
+
+    partido: Mapped[EventoPartido] = relationship("EventoPartido", back_populates="resultados_jugadores")
+    estudiante: Mapped["Estudiante"] = relationship("Estudiante", lazy="joined")

@@ -11,6 +11,7 @@ from app.api.routes import (
     invitations,
     news,
     notifications,
+    performance,
     permissions,
     roles,
     scenarios,
@@ -31,4 +32,6 @@ api_router.include_router(config.router)
 api_router.include_router(invitations.router)
 api_router.include_router(news.router)
 api_router.include_router(notifications.router)
+api_router.include_router(performance.router)
 api_router.include_router(permissions.router)
+api_router.include_router(performance.router)
