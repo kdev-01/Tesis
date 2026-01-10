@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 2s # Leer datos cada 2 segundos
+
+scrape_configs:
+  # Leer métricas internas de FastAPI (Tiempos, RPS)
+  - job_name: 'fastapi_backend'
+    static_configs:
+      - targets: ['backend_fdpen:8000']
+
+  # Leer uso de recursos de Docker (CPU, RAM, Red)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']

@@ -13,6 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - tesis_net
 
   backend:
     build: .
@@ -26,6 +28,8 @@ services:
     volumes:
       - ./media:/app/media
     restart: unless-stopped
+    networks:
+      - tesis_net
 
   caddy:
     image: caddy:2-alpine
@@ -40,8 +44,64 @@ services:
       - caddy_config:/config
     depends_on:
       - backend
+    networks:
+      - tesis_net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_server
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: unless-stopped
+    networks:
+      - tesis_net
+
+  # Monitor de recursos (CPU/RAM de contenedores)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    privileged: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    restart: unless-stopped
+    networks:
+      - tesis_net
+
+  # Visualización
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_server
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - tesis_net
 
 volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+  prometheus_data:
+  grafana_data:
+
+
+networks:
+  tesis_net:
+    driver: bridge
